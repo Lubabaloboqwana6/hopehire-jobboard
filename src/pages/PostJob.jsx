@@ -23,7 +23,13 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { db } from "@/firebase";
-import { collection, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  updateDoc,
+  getFirestore,
+} from "firebase/firestore";
 
 const PostJob = () => {
   const { user, profile, refreshJobs } = useAuth();
@@ -113,13 +119,13 @@ const PostJob = () => {
       };
 
       const docRef = await addDoc(collection(db, "jobs"), jobData);
-      
-      await updateDoc(docRef, { 
+
+      await updateDoc(docRef, {
         id: docRef.id,
         employer: {
           ...jobData.employer,
-          created_at: jobData.created_at
-        }
+          created_at: jobData.created_at,
+        },
       });
 
       toast({
@@ -133,7 +139,8 @@ const PostJob = () => {
       console.error("Failed to post job:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to post job. Please try again later.",
+        description:
+          error.message || "Failed to post job. Please try again later.",
         variant: "destructive",
       });
     } finally {

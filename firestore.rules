@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isEmployer() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'employer';
+    }
+
+    function isJobSeeker() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['job_seeker', 'jobseeker'];
+    }
+
+    function isJobOwner(jobId) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/jobs/$(jobId)).data.employer_id == request.auth.uid;
+    }
+
+    // Jobs collection rules
+    match /jobs/{jobId} {
+      allow read: if true; // Anyone can read job listings
+      allow create: if isEmployer(); // Only employers can create jobs
+      allow update, delete: if isJobOwner(jobId); // Only the job owner can update/delete
+    }
+
+    // Applications collection rules
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated(); // Authenticated users can read applications
+
+      allow create: if isJobSeeker(); // Only job seekers can apply
+
+      allow update: if isAuthenticated() && (
+        // Allow job owner to update the status
+        isJobOwner(resource.data.jobId) ||
+        // Allow applicant to update their own application
+        resource.data.applicantId == request.auth.uid
+      );
+
+      // Uncomment if you want to allow deletion of applications
+      // allow delete: if resource.data.applicantId == request.auth.uid;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // All signed-in users can read users
+      allow write: if request.auth.uid == userId; // Only users can write to their own profile
+    }
+  }
+}
