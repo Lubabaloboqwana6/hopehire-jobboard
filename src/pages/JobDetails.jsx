@@ -310,9 +310,7 @@ const JobDetails = () => {
                 </div>
                 {isCurrentUserEmployerOfJob && (
                   <Button
-                    onClick={() =>
-                      navigate(`/dashboard/jobs/${job.id}/applications`)
-                    }
+                    onClick={() => navigate('/applications')}
                     variant="outline"
                     className="flex items-center"
                   >
