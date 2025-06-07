@@ -90,14 +90,31 @@ const Navbar = () => {
           {user ? (
             <>
               {profile?.role === "employer" ? (
+                <>
+                  <Link
+                    to="/post-job"
+                    className={`px-3 py-2 ${getNavLinkClass('/post-job')}`} // Using getNavLinkClass
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Post Job
+                  </Link>
+                  <Link
+                    to="/applications"
+                    className={`px-3 py-2 ${getNavLinkClass('/applications')}`} // Using getNavLinkClass
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Applications
+                  </Link>
+                </>
+              ) : (
                 <Link
-                  to="/post-job"
-                  className={`px-3 py-2 ${getNavLinkClass('/post-job')}`} // Using getNavLinkClass
+                  to="/applications"
+                  className={`px-3 py-2 ${getNavLinkClass('/applications')}`} // Using getNavLinkClass
                   onClick={() => setIsOpen(false)}
                 >
-                  Post Job
+                  My Applications
                 </Link>
-              ) : null}
+              )}
               <Link
                 to="/dashboard"
                 className={`px-3 py-2 ${getNavLinkClass('/dashboard')}`} // Using getNavLinkClass
@@ -156,10 +173,25 @@ const Navbar = () => {
             {user ? (
               <div className="flex items-center space-x-4">
                 {profile?.role === "employer" ? (
-                  <Link to="/post-job" className={`px-3 py-2 ${getNavLinkClass('/post-job')}`}>
-                    Post Job
+                  <>
+                    <Link to="/post-job" className={`px-3 py-2 ${getNavLinkClass('/post-job')}`}>
+                      Post Job
+                    </Link>
+                    <Link
+                      to="/applications"
+                      className={`px-3 py-2 ${getNavLinkClass('/applications')}`}
+                    >
+                      Applications
+                    </Link>
+                  </>
+                ) : (
+                  <Link
+                    to="/applications"
+                    className={`px-3 py-2 ${getNavLinkClass('/applications')}`}
+                  >
+                    My Applications
                   </Link>
-                ) : null}
+                )}
 
                 <Link
                   to="/dashboard"

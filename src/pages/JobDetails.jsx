@@ -527,7 +527,7 @@ const JobDetails = () => {
                       </p>
                       <Button
                         className="mt-4 w-full"
-                        onClick={() => navigate("/dashboard")}
+                        onClick={() => navigate("/applications")}
                         variant="outline"
                       >
                         View Your Applications

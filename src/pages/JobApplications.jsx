@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Loader2, Briefcase, User, Calendar, ChevronLeft, CheckCircle, Clock, XCircle, Inbox } from "lucide-react";
+import { Loader2, Briefcase, User, Calendar, ChevronLeft, CheckCircle, Clock, XCircle, Inbox, MessageSquare } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 const statusColors = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -80,7 +81,8 @@ const JobApplications = () => {
             job: jobData,
             user: userData,
             createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate()
+            updatedAt: data.updatedAt?.toDate(),
+            comment: data.comment || ''
           });
         }
 
@@ -101,19 +103,20 @@ const JobApplications = () => {
     fetchApplications();
   }, [user, profile, toast]);
 
-  const handleStatusUpdate = async (applicationId, newStatus) => {
+  const handleStatusUpdate = async (applicationId, newStatus, comment = '') => {
     if (!user || profile?.role !== "employer") return;
 
     try {
       await updateDoc(doc(db, "applications", applicationId), {
         status: newStatus,
+        comment: comment,
         updatedAt: new Date()
       });
 
       setApplications(prev => 
         prev.map(app => 
           app.id === applicationId 
-            ? { ...app, status: newStatus, updatedAt: new Date() } 
+            ? { ...app, status: newStatus, comment: comment, updatedAt: new Date() } 
             : app
         )
       );
@@ -128,6 +131,54 @@ const JobApplications = () => {
         variant: "destructive",
         title: "Error",
         description: "Failed to update application status. Please try again."
+      });
+    }
+  };
+
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [comment, setComment] = useState('');
+
+  const handleCommentChange = (e) => {
+    setComment(e.target.value);
+  };
+
+  const handleCommentSubmit = async (applicationId) => {
+    if (!comment.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a comment before submitting"
+      });
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "applications", applicationId), {
+        comment: comment,
+        updatedAt: new Date()
+      });
+
+      setApplications(prev => 
+        prev.map(app => 
+          app.id === applicationId 
+            ? { ...app, comment: comment, updatedAt: new Date() } 
+            : app
+        )
+      );
+
+      toast({
+        title: "Comment added",
+        description: "Your comment has been saved"
+      });
+
+      setComment('');
+      setSelectedApplication(null);
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add comment. Please try again."
       });
     }
   };
@@ -204,86 +255,145 @@ const JobApplications = () => {
         <div className="space-y-4">
           {filteredApplications.map((application) => (
             <Card key={application.id}>
-              <CardHeader className="pb-2">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <CardHeader>
+                <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg">
-                      {application.job?.title || "Job Title Not Available"}
+                      {application.job?.title}
                     </CardTitle>
-                    <CardDescription className="mt-1">
-                      {profile?.role === "employer" ? (
-                        <span className="flex items-center">
-                          <User className="h-4 w-4 mr-1" />
-                          {application.user?.fullName || application.user?.email || "Applicant"}
-                        </span>
-                      ) : (
-                        <span className="flex items-center">
-                          <Briefcase className="h-4 w-4 mr-1" />
-                          {application.user?.companyName || application.user?.fullName || "Employer"}
-                        </span>
-                      )}
+                    <CardDescription className="text-sm text-muted-foreground">
+                      {application.job?.company}
                     </CardDescription>
                   </div>
-                  <div className="mt-2 md:mt-0">
-                    <Badge className={statusColors[application.status] + " flex items-center"}>
-                      {statusIcons[application.status]}
-                      {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                    </Badge>
-                  </div>
+                  <Badge variant="outline" className={statusColors[application.status]}>
+                    {statusIcons[application.status]} {application.status}
+                  </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="pt-2 pb-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Applied on</p>
-                    <p className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      {format(application.createdAt, "MMM d, yyyy")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Last updated</p>
-                    <p className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      {format(application.updatedAt, "MMM d, yyyy")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">
-                      {profile?.role === "employer" ? "Applicant's Message" : "Your Message"}
-                    </p>
-                    <p className="line-clamp-1">
-                      {application.message || "No message provided"}
-                    </p>
-                  </div>
-                </div>
-
-                {profile?.role === "employer" && (
-                  <div className="mt-4 pt-4 border-t">
-                    <h4 className="text-sm font-medium mb-2">Update Status</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {["reviewing", "interview", "offered", "rejected"].map((status) => (
-                        <Button
-                          key={status}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleStatusUpdate(application.id, status)}
-                          disabled={application.status === status}
-                        >
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </Button>
-                      ))}
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      <span>{application.job?.location}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>{format(application.createdAt, 'MMM d, yyyy')}</span>
                     </div>
                   </div>
-                )}
+                  <div className="space-y-2">
+                    <h3 className="font-medium">Applicant Details</h3>
+                    <div className="space-y-1">
+                      <p className="flex items-center space-x-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span>{application.user?.full_name || 'Anonymous'}</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {application.user?.email}
+                      </p>
+                    </div>
+                  </div>
+                  {application.comment && (
+                    <div className="space-y-2">
+                      <h3 className="font-medium">Employer Feedback</h3>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {application.comment}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
-              <CardFooter className="border-t pt-4">
-                <Button variant="outline" size="sm" asChild>
-                  <Link to={`/jobs/${application.jobId}`}>
-                    View Job Details
-                  </Link>
-                </Button>
-              </CardFooter>
+              {profile?.role === "employer" && (
+                <>
+                  <CardContent className="pt-0">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium">Add Feedback</h3>
+                        {selectedApplication === application.id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedApplication(null)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                      {selectedApplication === application.id ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={comment}
+                            onChange={handleCommentChange}
+                            placeholder="Enter your feedback here..."
+                            className="min-h-[100px]"
+                          />
+                          <Button
+                            onClick={() => handleCommentSubmit(application.id)}
+                            className="w-full"
+                          >
+                            Submit Feedback
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedApplication(application.id);
+                            setComment('');
+                          }}
+                          className="w-full"
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Add Feedback
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-end space-x-2">
+                    {application.status !== "pending" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleStatusUpdate(application.id, "pending")}
+                      >
+                        Set to Pending
+                      </Button>
+                    )}
+                    {application.status !== "reviewing" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleStatusUpdate(application.id, "reviewing")}
+                      >
+                        Reviewing
+                      </Button>
+                    )}
+                    {application.status !== "interview" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleStatusUpdate(application.id, "interview")}
+                      >
+                        Schedule Interview
+                      </Button>
+                    )}
+                    {application.status !== "offered" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleStatusUpdate(application.id, "offered")}
+                      >
+                        Offer Position
+                      </Button>
+                    )}
+                    {application.status !== "rejected" && (
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleStatusUpdate(application.id, "rejected")}
+                      >
+                        Reject
+                      </Button>
+                    )}
+                  </CardFooter>
+                </>
+              )}
             </Card>
           ))}
         </div>
